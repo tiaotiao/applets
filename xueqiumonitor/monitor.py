@@ -4,16 +4,27 @@
 import os
 import sys
 import time
+import logging
 from datetime import date
 from datetime import datetime
 from BeautifulSoup import BeautifulSoup
-    
+import ConfigParser
+
+global cfg
+global ids
+global url_prefix
+global log_level
+
 def getHTML(url):
     import httplib
     import urllib2
+
     
     try:
-        headers={'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'}
+        rv1 = time.time() % 10
+        rv2 = time.time() % 9
+        rv = "1.9.%d,%d" % (rv1, rv2)
+        headers={'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:'+rv+') Gecko/20091201 Firefox/3.5.6'}
         request = urllib2.Request(url, headers = headers)
         response = urllib2.urlopen(request, timeout = 5)
     except urllib2.URLError, e:
@@ -38,22 +49,22 @@ def getHTML(url):
             if m:
                 charset = m.group(1)
             else:
-                log.warn("html charset not found")
+                error("html charset not found")
     except:
-        log.warn(traceback())
+        error(traceback())
     
     try:
         content = response.read()
     except:
         e = "timeout"
-        log.error(traceback())
+        error(traceback())
         return None, e
     
     if charset:
         try:
             content = content.decode(charset)
         except:
-            log.error("can not decode html content from charset=%s" % (str(charset)))
+            error("can not decode html content from charset=%s" % (str(charset)))
     
     return content, None
     
@@ -76,12 +87,12 @@ def messagebox(title, msg):
     import ctypes
     MessageBox = ctypes.windll.user32.MessageBoxA
     MessageBox(None, msg, title, 0)
-    
-def getList():
-    url = "http://xueqiu.com/P/ZH000979"
+
+def getList(pid):
+    url = url_prefix + pid
     html_content, err = getHTML(url)
     if not html_content:
-        print("get html failed", err)
+        error("get html failed", err)
         return
     list_content = getTargetContent(html_content)
     return list_content
@@ -97,7 +108,6 @@ def getlist(content):
         l = l + s + " "
     return l
         
-    
 def diff(last, content):    
     listNew = content.findAll("span", {"class": "stock-name"})
     listOld = last.findAll("span", {"class": "stock-name"})
@@ -118,37 +128,133 @@ def diff(last, content):
                 find = True
                 break
         if not find:
-            print "\tnew", s
+            debug("\tnew", s)
             news = news + s + " "
     
     return news
+
+class Monitor(object):
     
-def run():
-    last_content = getList()
-    
-    l = getlist(last_content)
-    
-    print now(), "start run ..."
-    print l
-    
-    
-    while True:
-        time.sleep(2)
+    def __init__(self, pid):
+        super(Monitor, self).__init__()
+        self.pid = pid
+        self.last_content = getList(pid)
+        l = getlist(self.last_content)
+        info("start monitor", pid, ":", l)
+
+    def check(self):
+        content = getList(self.pid)
+
+        news = diff(self.last_content, content)
+        if news:
+            error("Update:", pid, news)
+            messagebox("Monitor", "There is an update:\n"+news)
+
+        l = getlist(content)
+        debug("check", self.pid, "list:", l, "new:",news)
+
+        self.last_content = content
+
+        return news
         
-        try:
-            content = getList()
-            
-            news = diff(last_content, content)
-            if not news:
-                pass
-                #print now(), "ok"
-            else:
-                print now(), "update!"           
-                messagebox("Wooow!", "There is an update!\n"+news)
-                
-            last_content = content
-        except Exception as e:
-            print "exception:", e
+
+def loadConfig(filepath):
+    global cfg
+    global url_prefix
+    global ids
+    global log_level
+
+    config = ConfigParser.ConfigParser()
+    config.read(filepath)
+
+    cfg = {}
+
+    url_prefix = config.get("monitor", "url_prefix")
+    if not url_prefix:
+        error("ERROR: config [monitor:prefix] not found")
+        return None
+    cfg["prefix"] = url_prefix
+
+    pid = config.get("monitor", "id")
+    if not pid:
+        error("ERROR: config [monitor:id] not found")
+        return None
+    ids = pid.split(",")
+    cfg["ids"] = ids
+
+    interval = config.getint("monitor", "interval")
+    if not interval:
+        interval = 10    
+    cfg["interval"] = 10
+
+    '''logfile = config.get("log", "file")
+    if logfile:
+        log.basicConfig(filename=logfile)'''
+
+    level = config.get("log", "level")
+    if not level:
+        level = "debug"
+    level = level.lower()
+    log_level = logging.DEBUG
+    if level == "debug":
+        log_level = logging.DEBUG
+    elif level == "info":
+        log_level = logging.INFO
+    elif level == "warning":
+        log_level = logging.WARNING
+    elif level == "error":
+        log_level = logging.ERROR
+    else:
+        print "invald log level", level
+
+    return cfg
+    
+def log(level, *args):
+    fmt = now() + " " + level
+    for i in range(len(args)):
+        fmt += " %s"
+    print fmt % args
+
+def debug(*args):
+    global log_level
+    if log_level < logging.DEBUG:
+        return
+    log("DEBUG", *args)
+
+def info(*args):
+    global log_level
+    if log_level < logging.INFO:
+        return
+    log("INFO", *args)
+
+def error(*args):
+    global log_level
+    if log_level < logging.ERROR:
+        return
+    log("ERROR", *args)
+
+def run():
+
+    loadConfig("./config.ini")
+    
+    # init
+    monitors = []
+    for pid in ids:
+        m = Monitor(pid)
+        monitors.append(m)
+
+    info("start run ...")
+
+    while True:
+        time.sleep(10)
+
+        info("check")
+
+        for m in monitors:
+            try:
+                m.check()
+            except Exception as e:
+                error("exception:", e)
 
 def main():
     run()
