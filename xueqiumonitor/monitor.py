@@ -1,4 +1,3 @@
-
 #-*- coding: UTF-8 -*- 
 
 import os
@@ -18,29 +17,22 @@ global log_level
 def getHTML(url):
     import httplib
     import urllib2
-
     
     try:
-        rv1 = time.time() % 10
-        rv2 = time.time() % 9
-        rv = "1.9.%d,%d" % (rv1, rv2)
-        headers={'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:'+rv+') Gecko/20091201 Firefox/3.5.6'}
+        headers={'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.4) Gecko/20091201 Firefox/3.5.6'}
         request = urllib2.Request(url, headers = headers)
         response = urllib2.urlopen(request, timeout = 5)
     except urllib2.URLError, e:
         if hasattr(e, "code"):
-            #log.error("Get html failed, server error: %s" % (str(e.code)))
             return None, e.code
         elif hasattr(e, "reason"):
-            #log.error("Get html failed, can not reach server: %s" % (str(e.reason)))
             return None, e.reason
     except httplib.BadStatusLine, e:
-        #log.error("Get html failed, BadStatusLine")
         return None, "BadStatusLine"
     
     import re
-    charset = None
-    
+    charset = "utf-8"
+
     try:
         info = response.info()
         if info.has_key("content-type"):
@@ -49,22 +41,23 @@ def getHTML(url):
             if m:
                 charset = m.group(1)
             else:
-                error("html charset not found")
+                print "ERROR: html charset not found"
     except:
-        error(traceback())
+        print "ERROR:", traceback()
+
     
     try:
         content = response.read()
     except:
         e = "timeout"
-        error(traceback())
+        print "ERROR:", traceback()
         return None, e
     
     if charset:
         try:
             content = content.decode(charset)
         except:
-            error("can not decode html content from charset=%s" % (str(charset)))
+            print "ERROR: can not decode html content from charset=", str(charset)
     
     return content, None
     
@@ -92,9 +85,12 @@ def getList(pid):
     url = url_prefix + pid
     html_content, err = getHTML(url)
     if not html_content:
-        error("get html failed", err)
+        print "ERROR: get html failed", err
         return
     list_content = getTargetContent(html_content)
+    if not list_content:
+        print "ERROR: get target content failed", html_content.encode("gbk")
+        return
     return list_content
     
 def now():
@@ -128,7 +124,6 @@ def diff(last, content):
                 find = True
                 break
         if not find:
-            debug("\tnew", s)
             news = news + s + " "
     
     return news
@@ -140,18 +135,17 @@ class Monitor(object):
         self.pid = pid
         self.last_content = getList(pid)
         l = getlist(self.last_content)
-        info("start monitor", pid, ":", l)
+        print "Start:", pid, ":", l
 
     def check(self):
         content = getList(self.pid)
 
         news = diff(self.last_content, content)
         if news:
-            error("Update:", pid, news)
+            print "Update:", pid, ">>>>", news
             messagebox("Monitor", "There is an update:\n"+news)
 
         l = getlist(content)
-        debug("check", self.pid, "list:", l, "new:",news)
 
         self.last_content = content
 
@@ -171,13 +165,13 @@ def loadConfig(filepath):
 
     url_prefix = config.get("monitor", "url_prefix")
     if not url_prefix:
-        error("ERROR: config [monitor:prefix] not found")
+        print "ERROR: config [monitor:prefix] not found"
         return None
     cfg["prefix"] = url_prefix
 
     pid = config.get("monitor", "id")
     if not pid:
-        error("ERROR: config [monitor:id] not found")
+        print "ERROR: config [monitor:id] not found"
         return None
     ids = pid.split(",")
     cfg["ids"] = ids
@@ -187,52 +181,9 @@ def loadConfig(filepath):
         interval = 10    
     cfg["interval"] = 10
 
-    '''logfile = config.get("log", "file")
-    if logfile:
-        log.basicConfig(filename=logfile)'''
-
-    level = config.get("log", "level")
-    if not level:
-        level = "debug"
-    level = level.lower()
-    log_level = logging.DEBUG
-    if level == "debug":
-        log_level = logging.DEBUG
-    elif level == "info":
-        log_level = logging.INFO
-    elif level == "warning":
-        log_level = logging.WARNING
-    elif level == "error":
-        log_level = logging.ERROR
-    else:
-        print "invald log level", level
-
     return cfg
+
     
-def log(level, *args):
-    fmt = now() + " " + level
-    for i in range(len(args)):
-        fmt += " %s"
-    print fmt % args
-
-def debug(*args):
-    global log_level
-    if log_level < logging.DEBUG:
-        return
-    log("DEBUG", *args)
-
-def info(*args):
-    global log_level
-    if log_level < logging.INFO:
-        return
-    log("INFO", *args)
-
-def error(*args):
-    global log_level
-    if log_level < logging.ERROR:
-        return
-    log("ERROR", *args)
-
 def run():
 
     loadConfig("./config.ini")
@@ -243,18 +194,18 @@ def run():
         m = Monitor(pid)
         monitors.append(m)
 
-    info("start run ...")
+    print "Start run ..."
 
     while True:
         time.sleep(10)
 
-        info("check")
+        print "Check."
 
         for m in monitors:
             try:
                 m.check()
             except Exception as e:
-                error("exception:", e)
+                print "Exception:", e
 
 def main():
     run()
