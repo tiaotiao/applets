@@ -19,6 +19,8 @@ func RunScript(c *web.Context) interface{} {
 	switch args.Lang {
 	case "js":
 		result, err = RunJavascript(args.Code)
+	case "lua":
+		result, err = RunLua(args.Code)
 	default:
 		return web.NewError("language not support", web.StatusBadRequest)
 	}

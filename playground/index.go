@@ -16,6 +16,8 @@ var indexPage = `
 	<body>
 		<h2>Submit your code</h2>
 
+		<p>Run any code as you wish, use a global variable named 'result' to return a result back.</p>
+
 		<form enctype="text/plain" id="codeform" method="get">
 			<p>
 				<strong>Select your language:</strong>
