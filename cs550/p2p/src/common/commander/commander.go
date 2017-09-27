@@ -3,6 +3,7 @@ package commander
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 )
@@ -27,7 +28,7 @@ func NewCommander() *Commander {
 	return c
 }
 
-func (c *Commander) Register(name string, help string, f CommandFunc) error {
+func (c *Commander) Register(name string, f CommandFunc, help string) error {
 	name = strings.ToLower(name)
 	if _, ok := c.cmds[name]; ok {
 		return errors.New("Command already exist")
@@ -45,7 +46,7 @@ func (c *Commander) Register(name string, help string, f CommandFunc) error {
 func (c *Commander) PrintHelp(args ...string) error {
 	println(len(c.cmds), "commands:")
 	for name, meta := range c.cmds {
-		println("  ", name, "\t", meta.Help)
+		fmt.Printf("  %-8s\t%s\n", name, meta.Help)
 	}
 	return nil
 }
@@ -53,12 +54,17 @@ func (c *Commander) PrintHelp(args ...string) error {
 func (c *Commander) Run() {
 
 	if _, ok := c.cmds["help"]; !ok {
-		c.Register("help", "provide help information", c.PrintHelp)
+		c.Register("help", c.PrintHelp, "Provide help information")
 	}
-	c.Register("exit", "Quits this program.", nil)
+	c.Register("exit", nil, "Quits this program.")
+
+	println("Type 'help' for more information.")
 
 	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
+	for {
+		print("> ")
+		scanner.Scan()
+
 		line := scanner.Text()
 		ss := strings.Fields(line)
 		if len(ss) <= 0 {
@@ -67,7 +73,7 @@ func (c *Commander) Run() {
 		name := strings.ToLower(ss[0])
 
 		if name == "exit" {
-			println("Bye.")
+			//println("Bye.")
 			break
 		}
 

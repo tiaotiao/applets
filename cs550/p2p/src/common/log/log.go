@@ -5,25 +5,34 @@ import (
 	"time"
 )
 
+var LevelDebug = true
+
+var ModuleName = ""
+
 func Debug(format string, args ...interface{}) {
-	output("Debug\t", format, args)
+	if LevelDebug {
+		output("Debug", format, args...)
+	}
 }
 
 func Info(format string, args ...interface{}) {
-	output("Info\t", format, args)
+	output("Info", format, args...)
 }
 
 func Warning(format string, args ...interface{}) {
-	output("Warning\t", format, args)
+	output("Warning", format, args...)
 }
 
 func Error(format string, args ...interface{}) {
-	output("ERROR\t", format, args)
+	output("ERROR", format, args...)
 }
 
 func output(tag string, format string, args ...interface{}) {
 	now := time.Now()
 	t := now.Format("15:04:05")
 	s := fmt.Sprintf(format, args...)
-	fmt.Printf("[%s] %s - %s\n", t, tag, s)
+	if ModuleName != "" {
+		s = fmt.Sprintf("[%s] %s", ModuleName, s)
+	}
+	fmt.Printf("[%s] %-6s - %s\n", t, tag, s)
 }

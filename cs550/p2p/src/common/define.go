@@ -1,6 +1,8 @@
 package common
 
-var CentralServerPort int = 8099
+import "fmt"
+
+const CentralServerPort int = 8099
 
 type FileInfo struct {
 	Name string
@@ -9,16 +11,22 @@ type FileInfo struct {
 }
 
 func (f *FileInfo) String() string {
-	return f.Name + "(" + string(f.Size) + "," + f.Md5 + ")"
+	return f.Name + " (size " + fmt.Sprintf("%d", f.Size) + ", md5 " + f.Md5 + ")"
+}
+
+type LocalFileInfo struct {
+	FileInfo
+	Path string
 }
 
 type PeerInfo struct {
 	PeerId  string
 	Address string
+	Port    int
 }
 
 func (p *PeerInfo) String() string {
-	return p.PeerId + ":" + p.Address
+	return fmt.Sprintf("%v,%v:%v", p.PeerId, p.Address, p.Port)
 }
 
 ///////////////////////////////////
@@ -26,16 +34,21 @@ func (p *PeerInfo) String() string {
 type RegistryArgs struct {
 	FileInfo
 	PeerId string
+	Port   int
 }
 
 type SearchResults struct {
+	Exist bool
 	FileInfo
 	Peers []PeerInfo
 }
 
 func (r *SearchResults) String() string {
+	if !r.Exist {
+		return "not found"
+	}
 	s := r.FileInfo.String()
-	s += " peers(" + string(len(r.Peers)) + ")["
+	s += " peers(" + fmt.Sprintf("%d", len(r.Peers)) + ")["
 	for i, p := range r.Peers {
 		if i != 0 {
 			s += ","

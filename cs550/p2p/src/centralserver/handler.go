@@ -3,19 +3,21 @@ package main
 import (
 	"net"
 
-	"../common"
-	"../common/log"
+	"common"
+	"common/log"
 )
 
 type Handler struct {
-	conn net.Conn
-	idx  *Indexing
+	conn   net.Conn
+	idx    *Indexing
+	peerId string
 }
 
 func NewHandler(conn net.Conn, idx *Indexing) *Handler {
 	h := &Handler{}
 	h.conn = conn
 	h.idx = idx
+	h.peerId = ""
 	return h
 }
 
@@ -23,21 +25,42 @@ func NewHandler(conn net.Conn, idx *Indexing) *Handler {
 // rpc interfaces
 
 func (h *Handler) Registry(args *common.RegistryArgs, ok *bool) error {
-	err := h.idx.Registry(h.conn, args, ok)
-	if err != nil {
-		log.Error("[Registry] args=%v, err=%v", err)
-		return err
+	ip := h.conn.RemoteAddr().(*net.TCPAddr).IP
+	addr := ip.String()
+	if ip.To4() == nil {
+		addr = "[" + ip.String() + "]"
 	}
-	log.Info("[Registry] args=%v, ok=&%v")
+
+	h.peerId = args.PeerId
+
+	*ok = h.idx.Registry(addr, args)
+
+	log.Info("Registry from %v, '%v' size=%v, md5=%v", args.PeerId, args.Name, args.Size, args.Md5)
 	return nil
 }
 
+var NotFoundResult = &common.SearchResults{Exist: false}
+
 func (h *Handler) Search(fileName string, results *common.SearchResults) error {
-	err := h.idx.Search(fileName, results)
-	if err != nil {
-		log.Error("[Search] name=%v, err=%v", fileName, err)
-		return err
+	r := h.idx.Search(fileName)
+	if r == nil {
+		*results = *NotFoundResult
+		log.Info("Search %v, Not found", fileName)
+		return nil
 	}
-	log.Info("[Search] name=%v, result=%v", fileName, results)
+	*results = *r
+	log.Info("Search %v, result=%v", fileName, results)
 	return nil
+}
+
+// func (h *Handler) Feedback() error {
+// 	return nil
+// }
+
+/////////////////////////////////////////////////////////////////////////
+// unexported functions
+
+func (h *Handler) onDisconnected() {
+	h.idx.RemoveAll(h.peerId)
+	log.Info("Disconnected %v", h.peerId)
 }

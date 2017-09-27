@@ -1,35 +1,52 @@
 package server
 
-import "net"
-import "net/rpc"
-import "../../centralserver/proxy"
+import (
+	"centralserver/proxy"
+	"fmt"
+	"net"
+	"net/rpc"
+
+	"common/log"
+)
 
 type Server struct {
 	listener  net.Listener
 	rpcServer *rpc.Server
+	port      int
 	addr      string
 
-	fileMgr       *FileManager
+	FileMgr       *FileManager
 	centralServer *proxy.Proxy
 	peerId        string
+	handler       *Handler
 
 	stopped bool
+	ch      chan error
 }
 
 func NewServer(port int, peerId string, p *proxy.Proxy) *Server {
 	s := &Server{}
-	s.addr = ":" + string(port)
+	s.centralServer = p
+	s.peerId = peerId
+	s.port = port
+	s.addr = ":" + fmt.Sprintf("%d", port)
 	s.rpcServer = rpc.NewServer()
-	s.fileMgr = NewFileManager(s)
+	s.FileMgr = NewFileManager(s)
+	s.handler = NewHandler(s.FileMgr)
 
-	s.rpcServer.Register(s.fileMgr)
-	s.stopped = true
+	s.rpcServer.Register(s.handler)
+	s.stopped = false
+	s.ch = make(chan error)
 	return s
 }
 
 func (s *Server) Stop() {
 	s.stopped = true
 	s.listener.Close()
+	err := <-s.ch
+	if err != nil {
+		// TODO log
+	}
 }
 
 func (s *Server) Run() (err error) {
@@ -39,16 +56,27 @@ func (s *Server) Run() (err error) {
 	}
 
 	s.stopped = false
-	for {
-		if s.stopped {
-			break
-		}
-		conn, err := s.listener.Accept()
-		if err != nil {
-			// TODO log error
-		}
 
-		go s.rpcServer.ServeConn(conn)
-	}
+	go func() {
+		defer func() {
+			s.ch <- err
+		}()
+
+		for {
+			if s.stopped {
+				break
+			}
+			conn, err := s.listener.Accept()
+			if err != nil {
+				log.Warning("[Peer] Accept error: %v", err)
+				continue
+			}
+
+			log.Debug("[Peer] Accepted %v", conn.RemoteAddr().String())
+
+			go s.rpcServer.ServeConn(conn)
+		}
+	}()
+
 	return nil
 }

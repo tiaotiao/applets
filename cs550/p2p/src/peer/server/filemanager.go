@@ -1,26 +1,18 @@
 package server
 
 import (
-	"crypto/md5"
+	"common"
+	"common/log"
 	"errors"
-	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sync"
-
-	"../../common"
 )
-
-type LocalFileInfo struct {
-	common.FileInfo
-	Path string
-}
 
 ///////////////////////////////////////////////
 
 type FileManager struct {
-	files map[string]*LocalFileInfo
+	files map[string]*common.LocalFileInfo
 	lock  sync.RWMutex
 
 	server *Server
@@ -28,13 +20,10 @@ type FileManager struct {
 
 func NewFileManager(s *Server) *FileManager {
 	m := &FileManager{}
-	m.files = make(map[string]*LocalFileInfo)
+	m.files = make(map[string]*common.LocalFileInfo)
 	m.server = s
 	return m
 }
-
-///////////////////////////////////////////////
-// rpc interfaces
 
 func (m *FileManager) Obtain(fileName string, content *[]byte) error {
 	m.lock.RLock()
@@ -42,35 +31,35 @@ func (m *FileManager) Obtain(fileName string, content *[]byte) error {
 	m.lock.RUnlock()
 
 	if !ok {
+		log.Debug("File not found in local map %v, %v", fileName, m.files)
 		return errors.New("file not found")
 	}
 
 	bytes, err := ioutil.ReadFile(f.Path)
 	if err != nil {
+		log.Debug("Read file error=%v %v", err, f.Path)
 		return err
 	}
 
 	*content = bytes
+	log.Debug("Return file ok. %v", len(bytes))
 
 	return nil
 }
 
-///////////////////////////////////////////////
-// unexproted functions
-
-func (m *FileManager) addFolder(folderPath string) error {
+func (m *FileManager) AddFolder(folderPath string) error {
 	files, err := ioutil.ReadDir(folderPath)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
-		m.addFile(filepath.Join(folderPath, file.Name()))
+		m.AddFile(filepath.Join(folderPath, file.Name()))
 	}
 	return nil
 }
 
-func (m *FileManager) addFile(path string) error {
-	f, err := getFileInfo(path)
+func (m *FileManager) AddFile(path string) error {
+	f, err := common.GetFileInfo(path)
 	if err != nil {
 		return err
 	}
@@ -87,7 +76,7 @@ func (m *FileManager) addFile(path string) error {
 	m.files[f.Name] = f
 
 	// nodify central server
-	ok, err := m.server.centralServer.Registry(m.server.peerId, &f.FileInfo)
+	ok, err := m.server.centralServer.Registry(m.server.peerId, m.server.port, &f.FileInfo)
 	if err != nil {
 		return err
 	}
@@ -97,33 +86,6 @@ func (m *FileManager) addFile(path string) error {
 	}
 
 	return nil
-}
-
-func getFileInfo(path string) (*LocalFileInfo, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-
-	s, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	f := &LocalFileInfo{}
-	f.Size = s.Size()
-	f.Name = s.Name()
-
-	h := md5.New()
-	_, err = io.Copy(h, file)
-	if err != nil {
-		return nil, err
-	}
-	f.Md5 = string(h.Sum(nil))
-
-	return f, nil
 }
 
 // func (m *FileManager) removeFile(fileName string) error {
