@@ -68,11 +68,11 @@ func (s *Server) Run() (err error) {
 			}
 			conn, err := s.listener.Accept()
 			if err != nil {
-				log.Warning("[Peer] Accept error: %v", err)
+				log.Debug("Accept error: %v", err)
 				continue
 			}
 
-			log.Debug("[Peer] Accepted %v", conn.RemoteAddr().String())
+			log.Debug("Accepted %v", conn.RemoteAddr().String())
 
 			go s.rpcServer.ServeConn(conn)
 		}

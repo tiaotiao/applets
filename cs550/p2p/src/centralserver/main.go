@@ -2,6 +2,7 @@ package main
 
 import (
 	"common/log"
+	"flag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,8 @@ func init() {
 }
 
 func main() {
+	flag.Parse()
+
 	s := NewServer()
 
 	err := s.Run()
@@ -22,7 +25,7 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	<-c // Block until a signal is received.
+	<-c // Block until a signal is received. Ctrl+C
 	s.Stop()
 
 	return

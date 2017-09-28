@@ -1,13 +1,18 @@
 package log
 
 import (
+	"flag"
 	"fmt"
 	"time"
 )
 
-var LevelDebug = true
+var LevelDebug = false
 
 var ModuleName = ""
+
+func init() {
+	flag.BoolVar(&LevelDebug, "debug", false, "Output debug logs. Default is false.")
+}
 
 func Debug(format string, args ...interface{}) {
 	if LevelDebug {

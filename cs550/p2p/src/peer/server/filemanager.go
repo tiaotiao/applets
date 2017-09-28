@@ -42,7 +42,7 @@ func (m *FileManager) Obtain(fileName string, content *[]byte) error {
 	}
 
 	*content = bytes
-	log.Debug("Return file ok. %v", len(bytes))
+	log.Debug("Upload file ok. '%v' %v", fileName, len(bytes))
 
 	return nil
 }

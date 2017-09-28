@@ -80,7 +80,7 @@ func (s *Server) Run() (err error) {
 			}()
 		}
 
-		log.Debug("Stopped.")
+		log.Info("Stopped.")
 	}()
 
 	return nil

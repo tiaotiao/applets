@@ -35,7 +35,7 @@ func (h *Handler) Registry(args *common.RegistryArgs, ok *bool) error {
 
 	*ok = h.idx.Registry(addr, args)
 
-	log.Info("Registry from %v, '%v' size=%v, md5=%v", args.PeerId, args.Name, args.Size, args.Md5)
+	log.Debug("Registry '%v', peerId=%v, size=%v, md5=%v", args.Name, args.PeerId, args.Size, args.Md5)
 	return nil
 }
 
@@ -45,11 +45,11 @@ func (h *Handler) Search(fileName string, results *common.SearchResults) error {
 	r := h.idx.Search(fileName)
 	if r == nil {
 		*results = *NotFoundResult
-		log.Info("Search %v, Not found", fileName)
+		log.Debug("Search '%v', Not found", fileName)
 		return nil
 	}
 	*results = *r
-	log.Info("Search %v, result=%v", fileName, results)
+	log.Debug("Search '%v', result=%v", fileName, results)
 	return nil
 }
 
@@ -62,5 +62,5 @@ func (h *Handler) Search(fileName string, results *common.SearchResults) error {
 
 func (h *Handler) onDisconnected() {
 	h.idx.RemoveAll(h.peerId)
-	log.Info("Disconnected %v", h.peerId)
+	log.Debug("Disconnected. peerId=%v", h.peerId)
 }

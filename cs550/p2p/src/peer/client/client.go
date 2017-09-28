@@ -49,7 +49,9 @@ func (c *Client) Obtain(fileName string) error {
 		return err
 	}
 
-	log.Info("[Peer] Obtain file ok. %v size=%v md5=%v content=[%v]", results.Name, results.Size, results.Md5, snippet)
+	// register to central server
+
+	log.Info("Download file ok. '%v' size=%v, content=[%v], md5=%v", results.Name, results.Size, snippet, results.Md5)
 
 	return nil
 }
@@ -77,7 +79,7 @@ func (c *Client) obtain(p common.PeerInfo, fileName string) (string, error) {
 	path := filepath.Join(c.folder, fileName)
 	err = ioutil.WriteFile(path, content, os.ModePerm)
 	if err != nil {
-		log.Debug("Write file error %v, %v, %v", err, path, len(content))
+		log.Error("Write file error %v, %v, %v", err, path, len(content))
 		return snippet, err
 	}
 
@@ -93,7 +95,7 @@ func (c *Client) checkFile(f *common.FileInfo) error {
 	}
 
 	if f.Size != info.Size || f.Md5 != info.Md5 {
-		return fmt.Errorf("file not match remote=(%v,%v), local=%v,%v %v", f.Size, f.Md5, info.Size, info.Md5, info.Path)
+		return fmt.Errorf("File not match remote=(%v,%v), local=(%v,%v) %v", f.Size, f.Md5, info.Size, info.Md5, info.Path)
 	}
 
 	return nil

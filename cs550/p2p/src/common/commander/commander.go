@@ -86,7 +86,7 @@ func (c *Commander) Run() {
 
 		err := cmd.Func(args...)
 		if err != nil {
-			println("Error:", err.Error())
+			println("Error:", err.Error(), " Type 'help' for more information.")
 		}
 	}
 }
