@@ -8,24 +8,22 @@ import (
 	"time"
 )
 
-func ReadParams() (server string, dir string, port int, peerId string, debug bool) {
+func readParams() (server string, dir string, port int, peerId string, debug bool) {
 	flag.StringVar(&server, "server", "localhost", "Address of central server. Default value is localhost.")
 	flag.StringVar(&dir, "dir", "./", "Shared directory. Default is current dir.")
 	flag.IntVar(&port, "port", 0, "Optional. Listening port number. Default port is chosen randomly.")
 	flag.StringVar(&peerId, "id", "", "Optional. A random ID will be given if not specified.")
-	//flag.BoolVar(&debug, "debug", false, "Optional. Output debug logs. Default is false.")
 	flag.Parse()
 
 	rand.Seed(time.Now().UnixNano())
 
 	if port == 0 {
-		port = 8100 + rand.Intn(900)
+		port = 8100 + rand.Intn(900) // random port
 	}
 
 	if peerId == "" {
-		peerId = fmt.Sprintf("peer-%d-%s", port, randString(4))
+		peerId = fmt.Sprintf("peer-%d-%s", port, randString(4)) // random peer id
 	}
-
 	return
 }
 
@@ -39,7 +37,7 @@ func randString(n int) string {
 }
 
 func main() {
-	server, dir, port, peerId, debug := ReadParams()
+	server, dir, port, peerId, debug := readParams()
 
 	log.LevelDebug = debug
 	log.ModuleName = "Peer"

@@ -22,9 +22,11 @@ func NewHandler(conn net.Conn, idx *Indexing) *Handler {
 }
 
 ///////////////////////////////////////////////
-// rpc interfaces
+// RPC interfaces
 
+// Registry is the interface for RPC
 func (h *Handler) Registry(args *common.RegistryArgs, ok *bool) error {
+	// Get remote address
 	ip := h.conn.RemoteAddr().(*net.TCPAddr).IP
 	addr := ip.String()
 	if ip.To4() == nil {
@@ -33,7 +35,7 @@ func (h *Handler) Registry(args *common.RegistryArgs, ok *bool) error {
 
 	h.peerId = args.PeerId
 
-	*ok = h.idx.Registry(addr, args)
+	*ok = h.idx.Registry(addr, args) // Register to the indexing module
 
 	log.Debug("Registry '%v', peerId=%v, size=%v, md5=%v", args.Name, args.PeerId, args.Size, args.Md5)
 	return nil
@@ -41,8 +43,9 @@ func (h *Handler) Registry(args *common.RegistryArgs, ok *bool) error {
 
 var NotFoundResult = &common.SearchResults{Exist: false}
 
+// Search is the interface for RPC
 func (h *Handler) Search(fileName string, results *common.SearchResults) error {
-	r := h.idx.Search(fileName)
+	r := h.idx.Search(fileName) // Search from indexing module
 	if r == nil {
 		*results = *NotFoundResult
 		log.Debug("Search '%v', Not found", fileName)
@@ -52,10 +55,6 @@ func (h *Handler) Search(fileName string, results *common.SearchResults) error {
 	log.Debug("Search '%v', result=%v", fileName, results)
 	return nil
 }
-
-// func (h *Handler) Feedback() error {
-// 	return nil
-// }
 
 /////////////////////////////////////////////////////////////////////////
 // unexported functions

@@ -9,8 +9,7 @@ import (
 	"sync"
 )
 
-///////////////////////////////////////////////
-
+// FileManager is responsible for managing local files of peer
 type FileManager struct {
 	files map[string]*common.LocalFileInfo
 	lock  sync.RWMutex
@@ -25,17 +24,18 @@ func NewFileManager(s *Server) *FileManager {
 	return m
 }
 
+// Obtain loads and returns the file content
 func (m *FileManager) Obtain(fileName string, content *[]byte) error {
 	m.lock.RLock()
 	f, ok := m.files[fileName]
 	m.lock.RUnlock()
 
 	if !ok {
-		log.Debug("File not found in local map %v, %v", fileName, m.files)
+		log.Debug("File not found in local map %v", fileName)
 		return errors.New("file not found")
 	}
 
-	bytes, err := ioutil.ReadFile(f.Path)
+	bytes, err := ioutil.ReadFile(f.Path) // Load file from disk
 	if err != nil {
 		log.Debug("Read file error=%v %v", err, f.Path)
 		return err
@@ -47,17 +47,21 @@ func (m *FileManager) Obtain(fileName string, content *[]byte) error {
 	return nil
 }
 
+// AddFolder is used for adding a whole folder of files to peer
+// the whole folder will be shared and registered to Central Server
 func (m *FileManager) AddFolder(folderPath string) error {
 	files, err := ioutil.ReadDir(folderPath)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
-		m.AddFile(filepath.Join(folderPath, file.Name()))
+		m.AddFile(filepath.Join(folderPath, file.Name())) // Add one by one
 	}
 	return nil
 }
 
+// AddFile is used for adding a local file to peer
+// this file will be shared and registered to Central Server
 func (m *FileManager) AddFile(path string) error {
 	f, err := common.GetFileInfo(path)
 	if err != nil {
@@ -68,26 +72,17 @@ func (m *FileManager) AddFile(path string) error {
 	defer m.lock.Unlock()
 
 	_, exist := m.files[f.Name]
-	if exist {
-		// TODO log warning
+	if exist { // Already added
 		return nil
 	}
 
 	m.files[f.Name] = f
 
-	// nodify central server
-	ok, err := m.server.centralServer.Registry(m.server.peerId, m.server.port, &f.FileInfo)
+	// Nodify Central Server
+	_, err = m.server.centralServer.Registry(m.server.peerId, m.server.port, &f.FileInfo)
 	if err != nil {
 		return err
 	}
 
-	if !ok {
-		// TODO log warning
-	}
-
 	return nil
 }
-
-// func (m *FileManager) removeFile(fileName string) error {
-// 	return nil
-// }

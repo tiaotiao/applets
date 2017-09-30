@@ -9,6 +9,7 @@ import (
 	"net/rpc"
 )
 
+// Server is responseible for listening to a port and serve the connections
 type Server struct {
 	listener  net.Listener
 	rpcServer *rpc.Server
@@ -61,6 +62,7 @@ func (s *Server) Run() (err error) {
 				break
 			}
 
+			// Received a new connection
 			conn, err := s.listener.Accept()
 			if err != nil {
 				log.Debug("Accept %v", err)
@@ -74,9 +76,10 @@ func (s *Server) Run() (err error) {
 			rpcServer := rpc.NewServer()
 			rpcServer.Register(h)
 
+			// Serve the connection in other goroutine (lightweight thread).
 			go func() {
-				rpcServer.ServeConn(conn)
-				h.onDisconnected()
+				rpcServer.ServeConn(conn) // block until disconnected
+				h.onDisconnected()        // clean up all registered files
 			}()
 		}
 

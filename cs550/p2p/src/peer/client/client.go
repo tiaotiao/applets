@@ -44,40 +44,43 @@ func (c *Client) Obtain(fileName string) error {
 		return err
 	}
 
-	err = c.checkFile(&results.FileInfo)
+	err = c.verifyFile(&results.FileInfo)
 	if err != nil {
 		return err
 	}
 
-	// register to central server
+	// TODO register to central server
 
 	log.Info("Download file ok. '%v' size=%v, content=[%v], md5=%v", results.Name, results.Size, snippet, results.Md5)
 
 	return nil
 }
 
+// Download file from the other peer
 func (c *Client) obtain(p common.PeerInfo, fileName string) (string, error) {
-	rpcClient, err := rpc.Dial("tcp", fmt.Sprintf("%v:%v", p.Address, p.Port))
-	if err != nil {
-		return "", err
-	}
-	var content []byte
-	err = rpcClient.Call("Handler.Obtain", fileName, &content)
+	rpcClient, err := rpc.Dial("tcp", fmt.Sprintf("%v:%v", p.Address, p.Port)) // Connect to the other peer
 	if err != nil {
 		return "", err
 	}
 
-	snippet := ""
+	// WAENING: Due to the limitation of the RPC library, this RPC call will load the whole file in memory before
+	// 		write to file. It will be a big issue if the file is very large. This function need to be changed later.
+	var content []byte                                         // File content will be loaded in here
+	err = rpcClient.Call("Handler.Obtain", fileName, &content) // RPC call
+	if err != nil {
+		return "", err
+	}
+
+	snippet := "" // snippet of the content
 	if len(content) <= 64 {
 		snippet = string(content)
 	} else {
 		snippet = string(content[:30]) + "...." + string(content[len(content)-30:])
 	}
-
 	snippet = strings.TrimSpace(snippet)
 
 	path := filepath.Join(c.folder, fileName)
-	err = ioutil.WriteFile(path, content, os.ModePerm)
+	err = ioutil.WriteFile(path, content, os.ModePerm) // Write content to file
 	if err != nil {
 		log.Error("Write file error %v, %v, %v", err, path, len(content))
 		return snippet, err
@@ -86,14 +89,16 @@ func (c *Client) obtain(p common.PeerInfo, fileName string) (string, error) {
 	return snippet, nil
 }
 
-func (c *Client) checkFile(f *common.FileInfo) error {
+// Verify downloaded file by size and md5
+func (c *Client) verifyFile(f *common.FileInfo) error {
 	path := filepath.Join(c.folder, f.Name)
 
-	info, err := common.GetFileInfo(path)
+	info, err := common.GetFileInfo(path) // Read file info
 	if err != nil {
 		return err
 	}
 
+	// Compare the size and md5
 	if f.Size != info.Size || f.Md5 != info.Md5 {
 		return fmt.Errorf("File not match remote=(%v,%v), local=(%v,%v) %v", f.Size, f.Md5, info.Size, info.Md5, info.Path)
 	}

@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// Peer is the top level object managing all the modules
 type Peer struct {
 	Server *server.Server
 	Client *client.Client
@@ -31,7 +32,7 @@ func NewPeer(peerId string, port int, folderDir string, centralServerAddr string
 	p.Dir = folderDir
 	p.ServerAddr = centralServerAddr
 
-	// register cmds
+	// Register commands
 	p.Cmd = commander.NewCommander()
 	p.Cmd.Register("add", p.cmdAddFile, "[filepath] Add local file and register to central server")
 	p.Cmd.Register("search", p.cmdSearch, "[filename] Search file from central server")
@@ -41,6 +42,7 @@ func NewPeer(peerId string, port int, folderDir string, centralServerAddr string
 }
 
 func (p *Peer) Run() {
+	// Connected to Central Server
 	err := p.Proxy.Connect()
 	if err != nil {
 		log.Error("Connect to Central Server failed. %v, %v", p.ServerAddr, err.Error())
@@ -49,16 +51,19 @@ func (p *Peer) Run() {
 	p.Server = server.NewServer(p.Port, p.PeerId, p.Proxy)
 	p.Client = client.NewClient(p.Proxy, p.Dir)
 
+	// Start peer server
 	err = p.Server.Run()
 	if err != nil {
 		log.Error("Start server failed. %v", err.Error())
 		return
 	}
 
+	// Add local files and register them to Central Server
 	p.Server.FileMgr.AddFolder(p.Dir)
 
 	log.Info("[%s] Start listening %v %v", p.PeerId, p.Port, p.Dir)
 
+	// Start command line, block until exit
 	p.Cmd.Run()
 
 	p.Server.Stop()
@@ -67,6 +72,7 @@ func (p *Peer) Run() {
 }
 
 ///////////////////////////////////////////////
+// Commands
 
 func (p *Peer) cmdAddFile(args ...string) error {
 	for _, filepath := range args {
@@ -96,7 +102,7 @@ func (p *Peer) cmdSearch(args ...string) error {
 
 func (p *Peer) cmdObtain(args ...string) error {
 	for _, filename := range args {
-		err := p.Client.Obtain(filename)
+		err := p.Client.Obtain(filename) // print log inside
 		if err != nil {
 			return err
 		}
@@ -118,10 +124,19 @@ func (p *Peer) cmdTestSearch(args ...string) (err error) {
 		}
 	}
 
+	now := time.Now()
+	delaySec := 5 - now.Second()%5
+	if delaySec < 2 {
+		delaySec += 5
+	}
+	log.Info("Delay %v seconds...", delaySec)
+	<-time.After(time.Duration(delaySec) * time.Second) // Delay few seconds wait for other peers
+
 	totalTime := 0
 	for i := 0; i < n; i++ {
 		startTime := time.Now().Nanosecond()
-		results, err := p.Proxy.Search(filename)
+
+		results, err := p.Proxy.Search(filename) // Search file
 		if err != nil {
 			return err
 		}

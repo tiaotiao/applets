@@ -18,12 +18,14 @@ func NewIndexing() *Indexing {
 	return i
 }
 
+// Registry add a file info to the index
 func (i *Indexing) Registry(addr string, args *common.RegistryArgs) bool {
 	if args == nil {
 		return false
 	}
 	i.lock.Lock()
 
+	// Check if fileName already exist
 	f, exist := i.files[args.Name]
 
 	if !exist {
@@ -34,11 +36,12 @@ func (i *Indexing) Registry(addr string, args *common.RegistryArgs) bool {
 		i.files[args.Name] = f
 	}
 
+	// Check if the file has already registered by this peer
 	ok := true
 	for i, p := range f.Peers {
 		if p.PeerId == args.PeerId {
 			ok = false
-			// update peer info
+			// Update peer info
 			f.Peers[i].Address = addr
 			f.Peers[i].Port = args.Port
 			break
@@ -51,7 +54,7 @@ func (i *Indexing) Registry(addr string, args *common.RegistryArgs) bool {
 			Address: addr,
 			Port:    args.Port,
 		}
-		// append new peer to file
+		// Append the peer
 		f.Peers = append(f.Peers, p)
 
 		if i.peers[p.PeerId] == nil {
@@ -65,6 +68,7 @@ func (i *Indexing) Registry(addr string, args *common.RegistryArgs) bool {
 	return ok
 }
 
+// Search file info by name
 func (i *Indexing) Search(fileName string) *common.SearchResults {
 	i.lock.RLock()
 	defer i.lock.RUnlock()
@@ -77,6 +81,7 @@ func (i *Indexing) Search(fileName string) *common.SearchResults {
 	return f
 }
 
+// Remove a file from index. Unused for now.
 func (i *Indexing) Remove(fileName string, peerId string) bool {
 	i.lock.Lock()
 	defer i.lock.Unlock()
@@ -106,6 +111,7 @@ func (i *Indexing) Remove(fileName string, peerId string) bool {
 	return false
 }
 
+// RemoveAll registered files by peerId
 func (i *Indexing) RemoveAll(peerId string) {
 	i.lock.Lock()
 	defer i.lock.Unlock()
@@ -124,7 +130,7 @@ func (i *Indexing) RemoveAll(peerId string) {
 		}
 		for j, p := range r.Peers {
 			if p.PeerId == peerId {
-				// remove item from array
+				// Remove item from array
 				r.Peers[j] = r.Peers[len(r.Peers)-1]
 				r.Peers = r.Peers[:len(r.Peers)-1]
 				if len(r.Peers) <= 0 {

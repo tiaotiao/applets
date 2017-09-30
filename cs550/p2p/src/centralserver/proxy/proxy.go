@@ -6,6 +6,7 @@ import (
 	"net/rpc"
 )
 
+// Proxy is a client interface to communicate with Central Server
 type Proxy struct {
 	rpcClient *rpc.Client
 	addr      string
@@ -17,6 +18,7 @@ func NewProxy(addr string) *Proxy {
 	return p
 }
 
+// Connect to Central Server
 func (p *Proxy) Connect() (err error) {
 	p.rpcClient, err = rpc.Dial("tcp", p.addr)
 	if err != nil {
@@ -25,6 +27,7 @@ func (p *Proxy) Connect() (err error) {
 	return nil
 }
 
+// Registry a new file to Central Server
 func (p *Proxy) Registry(peerId string, port int, f *common.FileInfo) (ok bool, err error) {
 	args := &common.RegistryArgs{
 		PeerId:   peerId,
@@ -40,6 +43,7 @@ func (p *Proxy) Registry(peerId string, port int, f *common.FileInfo) (ok bool, 
 	return ok, nil
 }
 
+// Search a file by name from Central Server
 func (p *Proxy) Search(fileName string) (*common.SearchResults, error) {
 	var results common.SearchResults
 	err := p.rpcClient.Call("Handler.Search", fileName, &results)

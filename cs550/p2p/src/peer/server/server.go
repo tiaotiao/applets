@@ -9,6 +9,7 @@ import (
 	"common/log"
 )
 
+// Server is responseible for listening to a port and serve the connections
 type Server struct {
 	listener  net.Listener
 	rpcServer *rpc.Server
@@ -43,14 +44,11 @@ func NewServer(port int, peerId string, p *proxy.Proxy) *Server {
 func (s *Server) Stop() {
 	s.stopped = true
 	s.listener.Close()
-	err := <-s.ch
-	if err != nil {
-		// TODO log
-	}
+	<-s.ch
 }
 
 func (s *Server) Run() (err error) {
-	s.listener, err = net.Listen("tcp", s.addr)
+	s.listener, err = net.Listen("tcp", s.addr) // Listen a port
 	if err != nil {
 		return err
 	}
@@ -66,7 +64,7 @@ func (s *Server) Run() (err error) {
 			if s.stopped {
 				break
 			}
-			conn, err := s.listener.Accept()
+			conn, err := s.listener.Accept() // New connection
 			if err != nil {
 				log.Debug("Accept error: %v", err)
 				continue
@@ -74,7 +72,7 @@ func (s *Server) Run() (err error) {
 
 			log.Debug("Accepted %v", conn.RemoteAddr().String())
 
-			go s.rpcServer.ServeConn(conn)
+			go s.rpcServer.ServeConn(conn) // Serve the connection in another goroutine (lightweight thread)
 		}
 	}()
 

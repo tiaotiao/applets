@@ -1,4 +1,4 @@
-GOPATH   = $(CURDIR)
+export GOPATH   = $(CURDIR)
 
 install:
 	go install centralserver peer
