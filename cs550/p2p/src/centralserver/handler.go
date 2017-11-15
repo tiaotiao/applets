@@ -56,6 +56,14 @@ func (h *Handler) Search(fileName string, results *common.SearchResults) error {
 	return nil
 }
 
+// List is the interface for RPC
+func (h *Handler) ListAll(key string, results *map[string]*common.SearchResults) error {
+	files := h.idx.ListAll()
+	log.Debug("ListAll count=%v", len(files))
+	*results = files
+	return nil
+}
+
 /////////////////////////////////////////////////////////////////////////
 // unexported functions
 

@@ -81,6 +81,13 @@ func (i *Indexing) Search(fileName string) *common.SearchResults {
 	return f
 }
 
+func (i *Indexing) ListAll() map[string]*common.SearchResults {
+	i.lock.RLock()
+	defer i.lock.RUnlock()
+
+	return i.files
+}
+
 // Remove a file from index. Unused for now.
 func (i *Indexing) Remove(fileName string, peerId string) bool {
 	i.lock.Lock()

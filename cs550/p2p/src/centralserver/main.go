@@ -2,22 +2,25 @@ package main
 
 import (
 	"common/log"
-	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-func init() {
-	log.ModuleName = "Server"
-}
-
 func main() {
-	flag.Parse()
+	cfg, err := LoadConfig()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	s := NewServer()
+	log.LevelDebug = cfg.Debug
+	log.ModuleName = "Server"
 
-	err := s.Run() // run server
+	s := NewServer(cfg.Port)
+
+	err = s.Run() // run server
 	if err != nil {
 		return
 	}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"common"
 	"common/log"
 	"errors"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 
 // Server is responseible for listening to a port and serve the connections
 type Server struct {
+	port      int
 	listener  net.Listener
 	rpcServer *rpc.Server
 	addr      string
@@ -20,9 +20,10 @@ type Server struct {
 	ch       chan error
 }
 
-func NewServer() *Server {
+func NewServer(port int) *Server {
 	s := &Server{}
-	s.addr = ":" + fmt.Sprintf("%d", common.CentralServerPort)
+	s.port = port
+	s.addr = ":" + fmt.Sprintf("%d", s.port)
 	s.rpcServer = rpc.NewServer()
 	s.indexing = NewIndexing()
 	s.stoped = false

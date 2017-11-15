@@ -2,8 +2,6 @@ package common
 
 import "fmt"
 
-const CentralServerPort int = 8099
-
 type FileInfo struct {
 	Name string
 	Size int64
@@ -26,7 +24,7 @@ type PeerInfo struct {
 }
 
 func (p *PeerInfo) String() string {
-	return fmt.Sprintf("%v,%v:%v", p.PeerId, p.Address, p.Port)
+	return p.PeerId
 }
 
 ///////////////////////////////////
@@ -41,6 +39,19 @@ type SearchResults struct {
 	Exist bool
 	FileInfo
 	Peers []PeerInfo
+}
+
+func (r *SearchResults) StringPeers() string {
+	s := ""
+
+	for _, p := range r.Peers {
+		if s != "" {
+			s += ", "
+		}
+		s += p.String()
+	}
+
+	return "[" + s + "]"
 }
 
 func (r *SearchResults) String() string {

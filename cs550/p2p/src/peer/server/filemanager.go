@@ -79,7 +79,7 @@ func (m *FileManager) AddFile(path string) error {
 	m.files[f.Name] = f
 
 	// Nodify Central Server
-	_, err = m.server.centralServer.Registry(m.server.peerId, m.server.port, &f.FileInfo)
+	_, err = m.server.centralServer.Registry(&f.FileInfo)
 	if err != nil {
 		return err
 	}

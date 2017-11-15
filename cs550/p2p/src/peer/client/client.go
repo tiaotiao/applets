@@ -4,25 +4,28 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/rpc"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"centralserver/proxy"
 	"common"
-	"common/log"
 )
 
 type Client struct {
 	centralServer *proxy.Proxy
 	folder        string
+	peerId        string
+	pool          *Pool
 }
 
-func NewClient(p *proxy.Proxy, folderPath string) *Client {
+func NewClient(peerId string, p *proxy.Proxy, folderPath string) *Client {
 	c := &Client{}
 	c.centralServer = p
 	c.folder = folderPath
+	c.peerId = peerId
+	c.pool = NewPool()
 	return c
 }
 
@@ -36,29 +39,39 @@ func (c *Client) Obtain(fileName string) error {
 		return errors.New("peers list is empty")
 	}
 
-	// TODO choose a peer
-	p := results.Peers[0]
+	// choose a peer randomly
+	idx := rand.Intn(len(results.Peers))
+	p := results.Peers[idx]
 
-	snippet, err := c.obtain(p, fileName)
+	if p.PeerId == c.peerId {
+		return nil
+	}
+
+	_, err = c.obtain(p, fileName)
 	if err != nil {
 		return err
 	}
 
-	err = c.verifyFile(&results.FileInfo)
+	// err = c.verifyFile(&results.FileInfo)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// register this file to central server
+	// report that the file is avaliable from this peer
+	_, err = c.centralServer.Registry(&results.FileInfo)
 	if err != nil {
 		return err
 	}
 
-	// TODO register to central server
-
-	log.Info("Download file ok. '%v' size=%v, content=[%v], md5=%v", results.Name, results.Size, snippet, results.Md5)
+	//log.Info("Download file ok. '%v' size=%v, content=[%v], md5=%v", results.Name, results.Size, snippet, results.Md5)
 
 	return nil
 }
 
 // Download file from the other peer
 func (c *Client) obtain(p common.PeerInfo, fileName string) (string, error) {
-	rpcClient, err := rpc.Dial("tcp", fmt.Sprintf("%v:%v", p.Address, p.Port)) // Connect to the other peer
+	rpcClient, err := c.pool.Dial(p.Address, p.Port) // Connect to the other peer
 	if err != nil {
 		return "", err
 	}
@@ -79,14 +92,35 @@ func (c *Client) obtain(p common.PeerInfo, fileName string) (string, error) {
 	}
 	snippet = strings.TrimSpace(snippet)
 
-	path := filepath.Join(c.folder, fileName)
-	err = ioutil.WriteFile(path, content, os.ModePerm) // Write content to file
+	err = c.writeFile(fileName, content) // Write content to file
 	if err != nil {
-		log.Error("Write file error %v, %v, %v", err, path, len(content))
+		//log.Error("Write file error %v, %v", err, fileName)
 		return snippet, err
 	}
 
 	return snippet, nil
+}
+
+func (c *Client) writeFile(fileName string, content []byte) error {
+	randFile := filepath.Join(c.folder, common.RandString(16))
+
+	err := ioutil.WriteFile(randFile, content, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(c.folder, fileName)
+
+	err = os.Rename(randFile, path)
+	if err != nil {
+		e := os.Remove(randFile)
+		if e != nil {
+			return e
+		}
+		return err
+	}
+
+	return nil
 }
 
 // Verify downloaded file by size and md5

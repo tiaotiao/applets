@@ -2,12 +2,13 @@ package main
 
 import (
 	"centralserver/proxy"
+	"common"
 	"common/commander"
 	"common/log"
-	"errors"
+	"fmt"
+	"math/rand"
 	"peer/client"
 	"peer/server"
-	"strconv"
 	"time"
 )
 
@@ -18,26 +19,35 @@ type Peer struct {
 	Proxy  *proxy.Proxy
 	Cmd    *commander.Commander
 
-	PeerId     string
-	Port       int
-	Dir        string
-	ServerAddr string
+	PeerId      string
+	Port        int
+	Dir         string
+	ServerAddrs []string
 }
 
-func NewPeer(peerId string, port int, folderDir string, centralServerAddr string) *Peer {
+func NewPeer(peerId string, port int, folderDir string, servers []string) *Peer {
+	rand.Seed(time.Now().UnixNano())
+	if port == 0 {
+		port = 8100 + rand.Intn(900) // random port
+	}
+	if peerId == "" {
+		peerId = fmt.Sprintf("PEER-%d-%s", port, common.RandString(4)) // random peer id
+	}
+
 	p := &Peer{}
-	p.Proxy = proxy.NewProxy(centralServerAddr)
+	p.Proxy = proxy.NewProxy(servers, peerId, port)
 	p.PeerId = peerId
 	p.Port = port
 	p.Dir = folderDir
-	p.ServerAddr = centralServerAddr
+	p.ServerAddrs = servers
 
 	// Register commands
 	p.Cmd = commander.NewCommander()
 	p.Cmd.Register("add", p.cmdAddFile, "[filepath] Add local file and register to central server")
 	p.Cmd.Register("search", p.cmdSearch, "[filename] Search file from central server")
+	p.Cmd.Register("list", p.cmdListAll, "List all file from central server")
 	p.Cmd.Register("obtain", p.cmdObtain, "[filename] Search and download a file from another peer")
-	p.Cmd.Register("test", p.cmdTestSearch, "[filename n] Test search for n times. Default n is 1000.")
+	p.Cmd.Register("test", p.cmdTestProformance, "[n] Test search for n times. Default n is 10000.")
 	return p
 }
 
@@ -45,11 +55,11 @@ func (p *Peer) Run() {
 	// Connected to Central Server
 	err := p.Proxy.Connect()
 	if err != nil {
-		log.Error("Connect to Central Server failed. %v, %v", p.ServerAddr, err.Error())
+		log.Error("Connect to Central Server failed. %v, %v", p.ServerAddrs, err.Error())
 		return
 	}
 	p.Server = server.NewServer(p.Port, p.PeerId, p.Proxy)
-	p.Client = client.NewClient(p.Proxy, p.Dir)
+	p.Client = client.NewClient(p.PeerId, p.Proxy, p.Dir)
 
 	// Start peer server
 	err = p.Server.Run()
@@ -69,86 +79,4 @@ func (p *Peer) Run() {
 	p.Server.Stop()
 
 	log.Info("Stopped.")
-}
-
-///////////////////////////////////////////////
-// Commands
-
-func (p *Peer) cmdAddFile(args ...string) error {
-	for _, filepath := range args {
-		err := p.Server.FileMgr.AddFile(filepath)
-		if err != nil {
-			return err
-		}
-		log.Info("Add file ok: %s", filepath)
-	}
-	return nil
-}
-
-func (p *Peer) cmdSearch(args ...string) error {
-	for _, filename := range args {
-		results, err := p.Proxy.Search(filename)
-		if err != nil {
-			return err
-		}
-		if !results.Exist {
-			log.Info("Search '%s' not found", filename)
-		} else {
-			log.Info("Search '%s' size=%v, peers=%v", filename, results.Size, results.Peers)
-		}
-	}
-	return nil
-}
-
-func (p *Peer) cmdObtain(args ...string) error {
-	for _, filename := range args {
-		err := p.Client.Obtain(filename) // print log inside
-		if err != nil {
-			return err
-		}
-		//log.Info("[Cmd] Obtain file %v ok.", filename)
-	}
-	return nil
-}
-
-func (p *Peer) cmdTestSearch(args ...string) (err error) {
-	n := 1000
-	if len(args) < 0 {
-		return nil
-	}
-	filename := args[0]
-	if len(args) > 1 {
-		n, err = strconv.Atoi(args[1])
-		if err != nil {
-			return err
-		}
-	}
-
-	now := time.Now()
-	delaySec := 5 - now.Second()%5
-	if delaySec < 2 {
-		delaySec += 5
-	}
-	log.Info("Delay %v seconds...", delaySec)
-	<-time.After(time.Duration(delaySec) * time.Second) // Delay few seconds wait for other peers
-
-	totalTime := 0
-	for i := 0; i < n; i++ {
-		startTime := time.Now().Nanosecond()
-
-		results, err := p.Proxy.Search(filename) // Search file
-		if err != nil {
-			return err
-		}
-		if results == nil {
-			return errors.New("file not found " + filename)
-		}
-		endTime := time.Now().Nanosecond()
-
-		totalTime += endTime - startTime
-	}
-	avgTime := int(totalTime / n)
-
-	log.Info("Test search '%v' %v times: avg=%.2fms, total=%.2fms", filename, n, float64(avgTime)/float64(time.Millisecond), float64(totalTime)/float64(time.Millisecond))
-	return nil
 }

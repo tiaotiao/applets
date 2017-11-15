@@ -17,3 +17,9 @@ func NewHandler(fileMgr *FileManager) *Handler {
 func (h *Handler) Obtain(fileName string, content *[]byte) error {
 	return h.fileMgr.Obtain(fileName, content)
 }
+
+// Echo provids a way to test the connection
+func (h *Handler) Echo(hello string, echo *string) error {
+	*echo = hello
+	return nil
+}
