@@ -1,34 +1,59 @@
 package sdk
 
-const PermRead string = "read"
-const PermWrite string = "write"
+import (
+	"common"
+	"fmt"
+	"net/rpc"
+)
 
 type LockClient struct {
-	// TODO
+	address string
+	rpc     *rpc.Client
 }
 
-func NewLockClient() *LockClient {
+func NewLockClient(address string) *LockClient {
 	l := LockClient{}
-	// TODO
+	l.address = fmt.Sprintf("%s:%d", address, common.LOCKSERVER_PORT)
 	return &l
 }
 
-func (l *LockClient) Connect(addr string) error {
-	// TODO
-	return nil
-}
-
-func (l *LockClient) Require(path string, perm string, timeout int) error {
-	// TODO
-	return nil
-}
-
-func (l *LockClient) Release(path string) error {
-	// TODO
+func (l *LockClient) Connect() (err error) {
+	l.rpc, err = rpc.Dial("tcp", l.address)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (l *LockClient) Close() error {
-	// TODO
-	return nil
+	return l.rpc.Close()
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+func (l *LockClient) RequireRead(fileID string) (bool, error) {
+	var ok bool
+	err := l.rpc.Call("Handler.RequireRead", fileID, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+func (l *LockClient) RequireWrite(fileID string) (bool, error) {
+	var ok bool
+	err := l.rpc.Call("Handler.RequireWrite", fileID, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+func (l *LockClient) Release(fileID string) (bool, error) {
+	var ok bool
+	err := l.rpc.Call("Handler.Release", fileID, &ok)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
 }

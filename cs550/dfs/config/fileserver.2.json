@@ -1,0 +1,10 @@
+{
+    "external_port" : 3032,
+
+    "internal_port" : 7032,
+    
+    "lock_server" : "localhost",
+    "file_servers" : [
+        "localhost:7031"
+    ]
+}
