@@ -1,4 +1,6 @@
 {
+    "dir" : "./data/fs1",
+    
     "external_port" : 3031,
 
     "internal_port" : 7031,

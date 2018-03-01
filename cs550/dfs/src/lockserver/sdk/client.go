@@ -31,18 +31,18 @@ func (l *LockClient) Close() error {
 
 ///////////////////////////////////////////////////////////////////////////
 
-func (l *LockClient) RequireRead(fileID string) (bool, error) {
+func (l *LockClient) AcquireRead(fileID string) (bool, error) {
 	var ok bool
-	err := l.rpc.Call("Handler.RequireRead", fileID, &ok)
+	err := l.rpc.Call("Handler.AcquireRead", fileID, &ok)
 	if err != nil {
 		return false, err
 	}
 	return ok, nil
 }
 
-func (l *LockClient) RequireWrite(fileID string) (bool, error) {
+func (l *LockClient) AcquireWrite(fileID string) (bool, error) {
 	var ok bool
-	err := l.rpc.Call("Handler.RequireWrite", fileID, &ok)
+	err := l.rpc.Call("Handler.AcquireWrite", fileID, &ok)
 	if err != nil {
 		return false, err
 	}

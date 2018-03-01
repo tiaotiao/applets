@@ -21,8 +21,10 @@ type FileServer struct {
 	protocol *fssdk.FileProtocol
 }
 
-func NewFileServer(externalPort int, internalPort int, lockServerAddr string, fileServerAddrs []string) *FileServer {
+func NewFileServer(dir string, externalPort int, internalPort int, lockServerAddr string, fileServerAddrs []string) *FileServer {
 	s := &FileServer{}
+
+	s.local = NewLocalFiles(dir)
 
 	s.cliRpc = rpc.NewServer(externalPort, func(c net.Conn) interface{} {
 		return NewClientHandler(s)
@@ -96,12 +98,12 @@ func (s *FileServer) Open(path string) (fileID string, size int, err error) {
 }
 
 func (s *FileServer) Read(fileID string, offset int, n int) ([]byte, error) {
-	ok, err := s.locks.RequireRead(fileID)
+	ok, err := s.locks.AcquireRead(fileID)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return nil, errors.New("Require lock failed")
+		return nil, errors.New("Acquire lock failed")
 	}
 
 	// read local file
@@ -118,12 +120,12 @@ func (s *FileServer) Read(fileID string, offset int, n int) ([]byte, error) {
 }
 
 func (s *FileServer) Write(fileID string, data []byte) error {
-	ok, err := s.locks.RequireWrite(fileID)
+	ok, err := s.locks.AcquireWrite(fileID)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		return errors.New("Require lock failed")
+		return errors.New("Acquire lock failed")
 	}
 
 	// write local file

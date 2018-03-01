@@ -16,7 +16,7 @@ type LocalFiles struct {
 func NewLocalFiles(root string) *LocalFiles {
 	l := &LocalFiles{}
 	l.root = root
-	return nil
+	return l
 }
 
 func (l *LocalFiles) Read(file string, offset int, n int) ([]byte, error) {

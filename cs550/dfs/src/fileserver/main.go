@@ -7,7 +7,7 @@ func main() {
 		return
 	}
 
-	s := NewFileServer(cfg.ExternalPort, cfg.InternalPort, cfg.LockServer, cfg.FileServers)
+	s := NewFileServer(cfg.Dir, cfg.ExternalPort, cfg.InternalPort, cfg.LockServer, cfg.FileServers)
 
 	err = s.Run()
 	if err != nil {

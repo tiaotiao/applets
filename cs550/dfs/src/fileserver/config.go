@@ -4,6 +4,7 @@ import "common/config"
 import "errors"
 
 type Config struct {
+	Dir          string   `json:"dir"`
 	ExternalPort int      `json:"external_port"`
 	InternalPort int      `json:"internal_port"`
 	LockServer   string   `json:"lock_server"`
